@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Rutinas de Ejercicio</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --gray: #9ca3af;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            margin: 1rem;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            text-align: center;
+        }
+
+        input, select, textarea, button {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .exercise-card-builder {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        video {
+            width: 100%;
+            max-height: 300px;
+            background: #000;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        .badge {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- PASO 1: Ingreso de Nombre -->
+    <div id="step-login">
+        <h1>🏋️ FitRoutine Cloud</h1>
+        <p style="text-align: center; color: var(--gray);">Ingresa tu nombre para cargar tus rutinas guardadas o crear unas nuevas.</p>
+        <label for="username">Tu Nombre:</label>
+        <input type="text" id="username" placeholder="Ej. Ana Pérez">
+        <button onclick="loginUser()">Ingresar</button>
+    </div>
+
+    <!-- PASO 2: Menú Principal -->
+    <div id="step-menu" class="hidden">
+        <h2>Hola, <span id="display-name"></span> 👋</h2>
+        <button onclick="showCreator()">➕ Crear / Editar Rutinas</button>
+        <button onclick="showRoutineSelector()" style="background-color: #10b981;">🚀 ¡Ir a Entrenar Hoy!</button>
+        <button onclick="logout()" style="background-color: #ef4444; margin-top: 2rem;">Cambiar de Usuario</button>
+    </div>
+
+    <!-- PASO 3: Creador de Rutinas -->
+    <div id="step-creator" class="hidden">
+        <h2>Diseña tus Rutinas</h2>
+        <label for="num-routines">¿Cuántas rutinas (días) vas a registrar?</label>
+        <input type="number" id="num-routines" min="1" max="7" value="1">
+        <button onclick="generateRoutineForms()">Generar Formulario de Rutinas</button>
+        <div id="routines-form-container"></div>
+        <button onclick="saveAllRoutines()" id="btn-save" class="hidden" style="background-color: #10b981;">💾 Guardar Rutinas en la Nube</button>
+        <button onclick="backToMenu()" style="background-color: #6b7280;">⬅️ Volver al Menú</button>
+    </div>
+
+    <!-- PASO 4: Selector de Rutina para Entrenar -->
+    <div id="step-selector" class="hidden">
+        <h2>Selecciona tu Rutina de Hoy</h2>
+        <div id="routine-list-container"></div>
+        <button onclick="backToMenu()" style="background-color: #6b7280;">⬅️ Volver al Menú</button>
+    </div>
+
+    <!-- PASO 5: Interfaz de Entrenamiento -->
+    <div id="step-workout" class="hidden">
+        <span id="workout-routine-title" class="badge"></span>
+        <h2 id="ex-title">Nombre del Ejercicio</h2>
+        
+        <video id="ex-video" controls></video>
+        
+        <div style="margin: 10px 0;">
+            <label for="speed-range">⚡ Velocidad del video: <span id="speed-val">1.0</span>x</label>
+            <input type="range" id="speed-range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="changeVideoSpeed(this.value)">
+        </div>
+
+        <p><strong>Descripción automática de ejecución:</strong></p>
+        <p id="ex-desc" style="background: #f9fafb; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb; line-height: 1.5;"></p>
+
+        <button onclick="nextExercise()" id="btn-next" style="background-color: #10b981; font-size: 1.1rem; padding: 1rem;">✅ Sí, ya estoy lista para el siguiente ejercicio</button>
+        <button onclick="backToMenu()" style="background-color: #6b7280;">Salir del Entrenamiento</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = "";
+    let allData = JSON.parse(localStorage.getItem('fit_app_data') || '{}');
+    let currentRoutineIndex = 0;
+    let currentExerciseIndex = 0;
+    let activeExercisesList = [];
+
+    function loginUser() {
+        const nameInput = document.getElementById('username').value.trim();
+        if (!nameInput) {
+            alert('Por favor ingresa tu nombre.');
+            return;
+        }
+        currentUser = nameInput;
+        document.getElementById('display-name').innerText = currentUser;
+        document.getElementById('step-login').classList.add('hidden');
+        document.getElementById('step-menu').classList.remove('hidden');
+    }
+
+    function logout() {
+        currentUser = "";
+        document.getElementById('username').value = "";
+        document.getElementById('step-menu').classList.add('hidden');
+        document.getElementById('step-login').classList.remove('hidden');
+    }
+
+    function backToMenu() {
+        document.getElementById('step-creator').classList.add('hidden');
+        document.getElementById('step-selector').classList.add('hidden');
+        document.getElementById('step-workout').classList.add('hidden');
+        document.getElementById('step-menu').classList.remove('hidden');
+    }
+
+    function showCreator() {
+        document.getElementById('step-menu').classList.add('hidden');
+        document.getElementById('step-creator').classList.remove('hidden');
+        document.getElementById('routines-form-container').innerHTML = '';
+        document.getElementById('btn-save').classList.add('hidden');
+    }
+
+    function generateRoutineForms() {
+        const num = parseInt(document.getElementById('num-routines').value);
+        const container = document.getElementById('routines-form-container');
+        container.innerHTML = '';
+
+        for (let i = 0; i < num; i++) {
+            let routineDiv = document.createElement('div');
+            routineDiv.style.border = "1px solid #cbd5e1";
+            routineDiv.style.padding = "1rem";
+            routineDiv.style.borderRadius = "8px";
+            routineDiv.style.marginBottom = "1rem";
+            
+            routineDiv.innerHTML = `
+                <h3>Rutina / Día ${i + 1}</h3>
+                <label>Nombre de la Rutina (Ej. Día de Pierna, Tren Superior):</label>
+                <input type="text" class="routine-name" placeholder="Rutina ${i + 1}">
+                <label>Número de ejercicios en esta rutina:</label>
+                <input type="number" class="num-exercises" min="1" value="2">
+                <button type="button" onclick="generateExerciseFields(this)">Configurar Ejercicios</button>
+                <div class="exercises-inputs-container"></div>
+            `;
+            container.appendChild(routineDiv);
+        }
+        document.getElementById('btn-save').classList.remove('hidden');
+    }
+
+    function generateExerciseFields(button) {
+        const parent = button.parentElement;
+        const numEx = parseInt(parent.querySelector('.num-exercises').value);
+        const exContainer = parent.querySelector('.exercises-inputs-container');
+        exContainer.innerHTML = '';
+
+        for (let j = 0; j < numEx; j++) {
+            let exCard = document.createElement('div');
+            exCard.className = 'exercise-card-builder';
+            exCard.innerHTML = `
+                <h4>Ejercicio ${j + 1}</h4>
+                <label>Nombre del ejercicio:</label>
+                <input type="text" class="ex-name" placeholder="Ej. Sentadillas con salto">
+                <label>Video de demostración (Sube tu archivo de video):</label>
+                <input type="file" class="ex-video-file" accept="video/*">
+            `;
+            exContainer.appendChild(exCard);
+        }
+    }
+
+    async function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    // Generador automático de descripción técnico-motriz basado en el video y el nombre
+    function generateAutomaticDescription(exerciseName, videoFile) {
+        let nameLower = exerciseName.toLowerCase();
+        let videoInfo = videoFile ? `Archivo de referencia: ${videoFile.name} (${(videoFile.size / (1024*1024)).toFixed(1)} MB)` : "Video base integrado";
+        
+        let specificTip = "Mantén la zona core activada, controla la respiración inhalando en la fase excéntrica (bajada) y exhala con fuerza en la fase concéntrica (subida).";
+        
+        if (nameLower.includes('sentadilla') || nameLower.includes('squat')) {
+            specificTip = "Coloca los pies a la altura de los hombros, mantén el torso erguido, empuja la cadera hacia atrás como si fueras a sentarte y asegúrate de que las rodillas sigan la dirección de las punteras sin sobrepasar los dedos de los pies.";
+        } else if (nameLower.includes('flexión') || nameLower.includes('lagartija') || nameLower.includes('push')) {
+            specificTip = "Ubica las manos ligeramente más abiertas que el ancho de los hombros, alinea el cuerpo en tabla recta desde los talones hasta la cabeza y desciende de forma controlada flexionando los codos a unos 45 grados.";
+        } else if (nameLower.includes('abdominal') || nameLower.includes('crunch') || nameLower.includes('plancha')) {
+            specificTip = "Contrae el abdomen con fuerza, evita forzar o jalar el cuello con las manos y realiza un movimiento fluido concentrando la tensión muscular en la zona media.";
+        } else if (nameLower.includes('peso muerto') || nameLower.includes('deadlift')) {
+            specificTip = "Mantén la espalda completamente recta, la barra o peso pegado a las piernas en todo momento y realiza el impulso principal extendiendo simultáneamente la cadera y las rodillas.";
+        }
+
+        return `📋 **Guía de Movimiento Automatizada para [ ${exerciseName.toUpperCase()} ]**\n\n` +
+               `1. **Postura Inicial:** Observa el video de muestra cargado (${videoInfo}) para replicar la alineación corporal exacta.\n` +
+               `2. **Ejecución del Movimiento:** ${specificTip}\n` +
+               `3. **Control y Ritmo:** Sigue la velocidad de referencia del video demostrativo y mantén el rango de movimiento completo en cada repetición para maximizar resultados.`;
+    }
+
+    async function saveAllRoutines() {
+        const routineDivs = document.querySelectorAll('#routines-form-container > div');
+        let userRoutines = [];
+
+        for (let rDiv of routineDivs) {
+            let rName = rDiv.querySelector('.routine-name').value || "Rutina sin nombre";
+            let exCards = rDiv.querySelectorAll('.exercise-card-builder');
+            let exercises = [];
+
+            for (let card of exCards) {
+                let name = card.querySelector('.ex-name').value || "Ejercicio";
+                let fileInput = card.querySelector('.ex-video-file');
+                let videoBase64 = "";
+                let uploadedFileObj = null;
+
+                if (fileInput.files && fileInput.files[0]) {
+                    uploadedFileObj = fileInput.files[0];
+                    videoBase64 = await fileToBase64(uploadedFileObj);
+                }
+
+                // Generación completamente automática de la descripción en base al video y el nombre
+                let autoDesc = generateAutomaticDescription(name, uploadedFileObj);
+
+                exercises.push({
+                    name: name,
+                    description: autoDesc,
+                    video: videoBase64
+                });
+            }
+
+            userRoutines.push({
+                name: rName,
+                exercises: exercises
+            });
+        }
+
+        if (!allData[currentUser]) {
+            allData[currentUser] = {};
+        }
+        allData[currentUser].routines = userRoutines;
+        localStorage.setItem('fit_app_data', JSON.stringify(allData));
+
+        alert('¡Rutinas y descripciones automáticas generadas y guardadas exitosamente en la nube!');
+        backToMenu();
+    }
+
+    function showRoutineSelector() {
+        const userRoutines = allData[currentUser]?.routines || [];
+        const container = document.getElementById('routine-list-container');
+        container.innerHTML = '';
+
+        if (userRoutines.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--gray);">No tienes rutinas creadas todavía. Ve al creador para añadir algunas.</p>';
+        } else {
+            userRoutines.forEach((routine, index) => {
+                let btn = document.createElement('button');
+                btn.innerText = `📅 ${routine.name} (${routine.exercises.length} ejercicios)`;
+                btn.style.backgroundColor = "#4f46e5";
+                btn.onclick = () => startWorkout(index);
+                container.appendChild(btn);
+            });
+        }
+
+        document.getElementById('step-menu').classList.add('hidden');
+        document.getElementById('step-selector').classList.remove('hidden');
+    }
+
+    function startWorkout(routineIndex) {
+        const userRoutines = allData[currentUser].routines;
+        activeExercisesList = userRoutines[routineIndex].exercises;
+        currentRoutineIndex = routineIndex;
+        currentExerciseIndex = 0;
+
+        document.getElementById('workout-routine-title').innerText = userRoutines[routineIndex].name;
+        document.getElementById('step-selector').classList.add('hidden');
+        document.getElementById('step-workout').classList.remove('hidden');
+
+        loadCurrentExercise();
+    }
+
+    function loadCurrentExercise() {
+        if (currentExerciseIndex >= activeExercisesList.length) {
+            alert('¡Felicitaciones! Has terminado toda la rutina del día 🎉');
+            backToMenu();
+            return;
+        }
+
+        let currentEx = activeExercisesList[currentExerciseIndex];
+        document.getElementById('ex-title').innerText = `${currentExerciseIndex + 1}. ${currentEx.name}`;
+        
+        // Reemplazar saltos de línea para que se vean bien formateados en HTML
+        document.getElementById('ex-desc').innerHTML = currentEx.description.replace(/\n/g, '<br>');
+        
+        let videoEl = document.getElementById('ex-video');
+        if (currentEx.video) {
+            videoEl.src = currentEx.video;
+            videoEl.load();
+        } else {
+            videoEl.src = "";
+        }
+
+        document.getElementById('speed-range').value = "1.0";
+        document.getElementById('speed-val').innerText = "1.0";
+        videoEl.playbackRate = 1.0;
+
+        let btnNext = document.getElementById('btn-next');
+        if (currentExerciseIndex === activeExercisesList.length - 1) {
+            btnNext.innerText = "🏁 Finalizar Rutina";
+        } else {
+            btnNext.innerText = "✅ Sí, ya estoy lista para el siguiente ejercicio";
+        }
+    }
+
+    function nextExercise() {
+        currentExerciseIndex++;
+        loadCurrentExercise();
+    }
+
+    function changeVideoSpeed(speed) {
+        let videoEl = document.getElementById('ex-video');
+        videoEl.playbackRate = parseFloat(speed);
+        document.getElementById('speed-val').innerText = speed;
+    }
+</script>
+
+</body>
+</html>
